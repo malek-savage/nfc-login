@@ -237,12 +237,12 @@ class NFCReader(object):
         lcd.clear()
         lcd.message(lcdmsg)
 
-    self._card_uid = self.select_card()
-    self._authenticate(0x00, uid, key)
-    block = 0
-    for block in range(64):
-        data = self.auth_and_read(block, uid, key)
-        # print block, data.encode("hex"), "".join([ x if x in string.printable else "." for x in data])
+        self._card_uid = self.select_card()
+        self._authenticate(0x00, uid, key)
+        block = 0
+        for block in range(64):
+            data = self.auth_and_read(block, uid, key)
+            # print block, data.encode("hex"), "".join([ x if x in string.printable else "." for x in data])
 
 
 def write_card(self, uid, data):
@@ -253,5 +253,7 @@ def write_card(self, uid, data):
 if __name__ == '__main__':
     logger = logging.getLogger("cardhandler").info
     while NFCReader(logger).run():
-        lcd.message(time.asctime(time.localtime(time.time())))
+        localtime = time.localtime()
+        timeString = time.strftime("%Y%m%d%H%M", localtime)
+        lcd.message(timeString % '\nWaiting for NFC Tag')
         pass
