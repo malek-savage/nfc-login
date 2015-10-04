@@ -26,18 +26,6 @@ import RPi.GPIO as GPIO
 
 from Adafruit_CharLCDPlate import Adafruit_CharLCDPlate
 
-lcd = Adafruit_CharLCDPlate()
-lcd.clear()
-
-# Pin Definitons:
-ledRed = 20 # Broadcom pin 18 (P1 pin 12)
-ledGrn = 16 # Broadcom pin 23 (P1 pin 16)
-
-# Pin Setup:
-GPIO.setmode(GPIO.BCM) # Broadcom pin-numbering scheme
-GPIO.setup(ledRed, GPIO.OUT) # LED pin set as output
-GPIO.setup(ledGrn, GPIO.OUT) # PWM pin set as output
-
 def hex_dump(string):
     """Dumps data as hexstrings"""
     return ' '.join(["%0.2X" % ord(x) for x in string])
@@ -49,6 +37,18 @@ class NFCReader(object):
     MC_READ = 0x30
     MC_WRITE = 0xA0
     card_timeout = 10
+
+    lcd = Adafruit_CharLCDPlate()
+    lcd.clear()
+
+# Pin Definitons:
+    ledRed = 20 # Broadcom pin 18 (P1 pin 12)
+    ledGrn = 16 # Broadcom pin 23 (P1 pin 16)
+
+# Pin Setup:
+    GPIO.setmode(GPIO.BCM) # Broadcom pin-numbering scheme
+    GPIO.setup(ledRed, GPIO.OUT) # LED pin set as output
+    GPIO.setup(ledGrn, GPIO.OUT) # PWM pin set as output
 
     def __init__(self, logger):
         self.__context = None
@@ -259,13 +259,15 @@ class NFCReader(object):
          lcd.message("Uknown Card...\nPlease try again")
          time.sleep(3)
 	 GPIO.output(ledRed, GPIO.LOW)
-	GPIO.cleanup() # cleanup all GPIO
 
-def write_card(self, uid, data):
-    """Accepts data of the recently read card with UID uid, and writes any changes necessary to it"""
-    raise NotImplementedError
+    def write_card(self, uid, data):
+        """Accepts data of the recently read card with UID uid, and writes any changes necessary to it"""
+        raise NotImplementedErr
 
 if __name__ == '__main__':
     logger = logging.getLogger("cardhandler").info
     while NFCReader(logger).run():
+        localtime = time.localtime()
+        timeString = time.strftime("%Y%m%d%H%M", localtime)
+        lcd.message(timeString % '\nWaiting for NFC Tag')
         pass
