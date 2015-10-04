@@ -27,11 +27,14 @@ from Adafruit_CharLCDPlate import Adafruit_CharLCDPlate
 
 lcd = Adafruit_CharLCDPlate()
 lcd.clear()
-#lcd.message(time.asctime( time.localtime(time.time())))
+
+
+# lcd.message(time.asctime( time.localtime(time.time())))
 
 def hex_dump(string):
     """Dumps data as hexstrings"""
     return ' '.join(["%0.2X" % ord(x) for x in string])
+
 
 ### NFC device setup
 class NFCReader(object):
@@ -73,8 +76,10 @@ class NFCReader(object):
                     _ = nfc.nfc_initiator_init(self.__device)
                     while True:
                         self._poll_loop()
+                        localtime = time.localtime()
+                        timeString = time.strftime("%Y%m%d%H%M", localtime)
                         lcd.clear()
-			lcd.message(time.asctime( time.localtime(time.time())))
+                        lcd.message(timeString % '\nScan NFC Tag...')
                 finally:
                     nfc.nfc_close(self.__device)
             else:
@@ -108,7 +113,7 @@ class NFCReader(object):
         nt = nfc.nfc_target()
         res = nfc.nfc_initiator_poll_target(self.__device, self.__modulations, len(self.__modulations), 10, 2,
                                             ctypes.byref(nt))
-        #print "RES", res
+        # print "RES", res
         if res < 0:
             raise IOError("NFC Error whilst polling")
         elif res >= 1:
@@ -186,7 +191,7 @@ class NFCReader(object):
         return nfc.nfc_initiator_transceive_bytes(self.__device, ctypes.pointer(abttx), len(abttx),
                                                   ctypes.pointer(abtrx), len(abtrx), 0)
 
-    def _authenticate(self, block, uid, key = "\xff\xff\xff\xff\xff\xff", use_b_key = False):
+    def _authenticate(self, block, uid, key="\xff\xff\xff\xff\xff\xff", use_b_key=False):
         """Authenticates to a particular block using a specified key"""
         if nfc.nfc_device_set_property_bool(self.__device, nfc.NP_EASY_FRAMING, True) < 0:
             raise Exception("Error setting Easy Framing property")
@@ -201,7 +206,7 @@ class NFCReader(object):
         return nfc.nfc_initiator_transceive_bytes(self.__device, ctypes.pointer(abttx), len(abttx),
                                                   ctypes.pointer(abtrx), len(abtrx), 0)
 
-    def auth_and_read(self, block, uid, key = "\xff\xff\xff\xff\xff\xff"):
+    def auth_and_read(self, block, uid, key="\xff\xff\xff\xff\xff\xff"):
         """Authenticates and then reads a block
 
            Returns '' if the authentication failed
@@ -213,7 +218,7 @@ class NFCReader(object):
             return self._read_block(block)
         return ''
 
-    def auth_and_write(self, block, uid, data, key = "\xff\xff\xff\xff\xff\xff"):
+    def auth_and_write(self, block, uid, data, key="\xff\xff\xff\xff\xff\xff"):
         """Authenticates and then writes a block
 
         """
@@ -227,23 +232,26 @@ class NFCReader(object):
         """Takes a uid, reads the card and return data for use in writing the card"""
         key = "\xff\xff\xff\xff\xff\xff"
         print "Reading card", uid.encode("hex")
-        if uid.encode("hex")=='4b1dd835':
-	 lcdmsg = 'Card Scanned:\nWelcome, Mark'
-         lcd.clear()
-         lcd.message(lcdmsg)
-        self._card_uid = self.select_card()
-        self._authenticate(0x00, uid, key)
-        block = 0
-        for block in range(64):
-            data = self.auth_and_read(block, uid, key)
-            #print block, data.encode("hex"), "".join([ x if x in string.printable else "." for x in data])
+        if uid.encode("hex") == '4b1dd835':
+            lcdmsg = 'Card Scanned:\nWelcome, Mark'
+        lcd.clear()
+        lcd.message(lcdmsg)
 
-    def write_card(self, uid, data):
-        """Accepts data of the recently read card with UID uid, and writes any changes necessary to it"""
-        raise NotImplementedError
+    self._card_uid = self.select_card()
+    self._authenticate(0x00, uid, key)
+    block = 0
+    for block in range(64):
+        data = self.auth_and_read(block, uid, key)
+        # print block, data.encode("hex"), "".join([ x if x in string.printable else "." for x in data])
+
+
+def write_card(self, uid, data):
+    """Accepts data of the recently read card with UID uid, and writes any changes necessary to it"""
+    raise NotImplementedError
+
 
 if __name__ == '__main__':
     logger = logging.getLogger("cardhandler").info
     while NFCReader(logger).run():
-     lcd.message(time.asctime( time.localtime(time.time())))   
-     pass
+        lcd.message(time.asctime(time.localtime(time.time())))
+        pass
