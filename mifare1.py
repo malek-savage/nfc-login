@@ -30,13 +30,15 @@ lcd = Adafruit_CharLCDPlate()
 lcd.clear()
 
 # Pin Definitons:
-ledRed = 20 # Broadcom pin 18 (P1 pin 12)
-ledGrn = 16 # Broadcom pin 23 (P1 pin 16)
+ledRed = 16
+ledGrn = 20
+ledBlue = 21
 
 # Pin Setup:
 GPIO.setmode(GPIO.BCM) # Broadcom pin-numbering scheme
-GPIO.setup(ledRed, GPIO.OUT) # LED pin set as output
-GPIO.setup(ledGrn, GPIO.OUT) # PWM pin set as output
+GPIO.setup(ledRed, GPIO.OUT)
+GPIO.setup(ledGrn, GPIO.OUT)
+GPIO.setup(ledBlue, GPIO.OUT)
 
 def hex_dump(string):
     """Dumps data as hexstrings"""
@@ -61,11 +63,18 @@ class NFCReader(object):
         self._clean_card()
 
         mods = [(nfc.NMT_ISO14443A, nfc.NBR_106)]
+	
+	global tags
+        tags = self.get_tags()
 
         self.__modulations = (nfc.nfc_modulation * len(mods))()
         for i in range(len(mods)):
             self.__modulations[i].nmt = mods[i][0]
             self.__modulations[i].nbr = mods[i][1]
+
+    def get_tags(self):
+	the_tags = {'a3b2a4d2' : {'user_id' : '100', 'first_name' : 'Mark', 'current_status' : 'IN'}}
+	return the_tags
 
     def run(self):
         """Starts the looping thread"""
@@ -82,8 +91,6 @@ class NFCReader(object):
                     _ = nfc.nfc_initiator_init(self.__device)
                     while True:
                         self._poll_loop()
-                        lcd.clear()
-			lcd.message(time.asctime( time.localtime(time.time())))
                 finally:
                     nfc.nfc_close(self.__device)
             else:
@@ -114,7 +121,8 @@ class NFCReader(object):
 
     def _poll_loop(self):
         """Starts a loop that constantly polls for cards"""
-        localtime = time.localtime()
+        GPIO.output(ledBlue, GPIO.HIGH)
+	localtime = time.localtime()
 	timeString = time.strftime("%Y-%m-%d %H:%M", localtime)
 	lcd.clear()
 	lcd.message(timeString + "\nWaiting for Card")
@@ -123,7 +131,10 @@ class NFCReader(object):
                                             ctypes.byref(nt))
         #print "RES", res
         if res < 0:
-            raise IOError("NFC Error whilst polling")
+            	GPIO.output(ledBlue, GPIO.LOW)
+#		lcd.clear()
+#        	lcd.message("Resetting Reader")
+		raise IOError("NFC Error whilst polling")
         elif res >= 1:
             uid = None
             if nt.nti.nai.szUidLen == 4:
@@ -240,26 +251,32 @@ class NFCReader(object):
         """Takes a uid, reads the card and return data for use in writing the card"""
         key = "\xff\xff\xff\xff\xff\xff"
         print "Reading card", uid.encode("hex")
-        if uid.encode("hex")=='4b1dd835':
+        self.check_user(uid)
+
+    def check_user(self, uid):
+	print tags['a3b2a4d2']['first_name']
+        GPIO.output(ledBlue, GPIO.LOW)
+	#if uid.encode("hex")=='4b1dd835':
+	if uid.encode("hex") in tags:
 	 GPIO.output(ledGrn, GPIO.HIGH)
-	 lcdmsg = 'Card Scanned:\nWelcome, Mark'
+	 lcdmsg = 'Card Scanned:\nWelcome, ' + tags['a3b2a4d2']['first_name']
          lcd.clear()
          lcd.message(lcdmsg)
 	 time.sleep(3)
 	 GPIO.output(ledGrn, GPIO.LOW)
          self._card_uid = self.select_card()
-         self._authenticate(0x00, uid, key)
-#        block = 0
-#        for block in range(64):
+#         self._authenticate(0x00, uid, key)
+#         block = 0
+#         for block in range(64):
 #            data = self.auth_and_read(block, uid, key)
-            #print block, data.encode("hex"), "".join([ x if x in string.printable else "." for x in data])
+#            print block, data.encode("hex"), "".join([ x if x in string.printable else "." for x in data])
 	else:
 	 GPIO.output(ledRed, GPIO.HIGH)
          lcd.clear()
          lcd.message("Uknown Card...\nPlease try again")
          time.sleep(3)
 	 GPIO.output(ledRed, GPIO.LOW)
-	GPIO.cleanup() # cleanup all GPIO
+#	 GPIO.cleanup() # cleanup all GPIO
 
 def write_card(self, uid, data):
     """Accepts data of the recently read card with UID uid, and writes any changes necessary to it"""
@@ -267,5 +284,6 @@ def write_card(self, uid, data):
 
 if __name__ == '__main__':
     logger = logging.getLogger("cardhandler").info
+    logging.basicConfig(level=logging.INFO)
     while NFCReader(logger).run():
         pass
